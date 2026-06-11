@@ -9,8 +9,7 @@ let currentAdjustCode = null;
 const SUPABASE_URL = 'https://owqhouyafggdzgcqwlji.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QgsSE7ZoIfcaPsJLlkfS5w_tGvRz_I6';
 let supabaseClient = null;
-const USER_ID = '87553652@qq.com';
-const ROW_ID = 'c5c4ca38-9682-451c-b4da-228de7f8b83b';
+const USER_ID = 'goldprice_web';
 let saveTimeout = null;
 
 try {
@@ -63,15 +62,16 @@ async function loadPortfolio() {
   if (supabaseClient) {
     try {
       const { data, error } = await supabaseClient
-        .from('fitness_data')
-        .select('exercises')
-        .eq('id', ROW_ID)
+        .from('goldprice_data')
+        .select('*')
+        .eq('user_id', USER_ID)
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
-      if (data && data.exercises && data.exercises.gold_holdings) {
-        const cloudStr = typeof data.exercises.gold_holdings === 'string'
-          ? data.exercises.gold_holdings
-          : JSON.stringify(data.exercises.gold_holdings);
+      if (data && data.holdings) {
+        const cloudStr = typeof data.holdings === 'string'
+          ? data.holdings
+          : JSON.stringify(data.holdings);
         p = FundPortfolio.deserialize(cloudStr) || p;
         localStorage.setItem(STORAGE_KEY, cloudStr);
       }
@@ -90,20 +90,17 @@ function savePortfolio() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
       try {
-        // Read current exercises, merge in gold_holdings, then update
-        const { data: current } = await supabaseClient
-          .from('fitness_data')
-          .select('exercises')
-          .eq('id', ROW_ID)
-          .maybeSingle();
+        const payload = {
+          user_id: USER_ID,
+          holdings: JSON.parse(serialized),
+          updated_at: new Date().toISOString()
+        };
 
-        const exercises = (current && current.exercises) ? { ...current.exercises } : {};
-        exercises.gold_holdings = serialized;
+        const { error } = await supabaseClient
+          .from('goldprice_data')
+          .upsert(payload, { onConflict: 'user_id' });
 
-        await supabaseClient
-          .from('fitness_data')
-          .update({ exercises, updated_at: new Date().toISOString() })
-          .eq('id', ROW_ID);
+        if (error) throw error;
       } catch (e) {
         console.warn('Supabase save error:', e.message);
       }
