@@ -13,24 +13,45 @@ const USER_ID = 'goldprice_web';
 let dbRecordId = null;
 let saveTimeout = null;
 
-// --- JSONP Utility ---
-function fetchJSONP(url, callbackName) {
+// --- JSONP Utility (matches original Swift project's approach) ---
+// EastMoney market API supports a configurable callback parameter named "cb"
+function fetchMarketJSONP(url) {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    const cb = `jsonp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    
-    window[cb] = (data) => {
+    const cb = `__mk_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+    const cleanup = () => {
       delete window[cb];
-      document.body.removeChild(script);
-      resolve(data);
+      if (script.parentNode) script.parentNode.removeChild(script);
     };
 
-    script.src = `${url}${url.includes('?') ? '&' : '?'}${callbackName}=${cb}`;
-    script.onerror = () => {
-      delete window[cb];
-      document.body.removeChild(script);
-      reject(new Error(`JSONP failed for ${url}`));
+    window[cb] = (data) => { cleanup(); resolve(data); };
+    script.src = `${url}&cb=${cb}`;
+    script.onerror = () => { cleanup(); reject(new Error('Market JSONP failed')); };
+    document.body.appendChild(script);
+  });
+}
+
+// Fund estimate API (fundgz.1234567.com.cn) uses a HARDCODED callback name "jsonpgz"
+// This matches the Swift parser: FundEstimateParser.parse expects "jsonpgz(...)"
+function fetchFundEstimate(code) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    const timestamp = Date.now();
+
+    const cleanup = () => {
+      delete window.jsonpgz;
+      if (script.parentNode) script.parentNode.removeChild(script);
     };
+
+    window.jsonpgz = (data) => { cleanup(); resolve(data); };
+    script.src = `https://fundgz.1234567.com.cn/js/${code}.js?rt=${timestamp}`;
+    script.onerror = () => { cleanup(); reject(new Error(`Fund ${code} fetch failed`)); };
+
+    // Timeout: if no response in 8s (matching Swift's 8s timeout), reject
+    const timer = setTimeout(() => { cleanup(); reject(new Error(`Fund ${code} timed out`)); }, 8000);
+    const origResolve = window.jsonpgz;
+    window.jsonpgz = (data) => { clearTimeout(timer); origResolve(data); };
 
     document.body.appendChild(script);
   });
@@ -40,7 +61,7 @@ function fetchJSONP(url, callbackName) {
 async function loadPortfolio() {
   const localData = localStorage.getItem(STORAGE_KEY);
   let p = localData ? FundPortfolio.deserialize(localData) : new FundPortfolio(FundPortfolio.getDefaults());
-  
+
   if (supabaseClient) {
     try {
       const { data, error } = await supabaseClient
@@ -59,7 +80,7 @@ async function loadPortfolio() {
         }
       }
     } catch (e) {
-      console.warn('Failed to load from Supabase', e);
+      console.warn('Supabase load failed, using local cache:', e.message);
     }
   }
   return p;
@@ -78,7 +99,6 @@ function savePortfolio() {
           exercises: { holdings: serialized },
           updated_at: new Date().toISOString()
         };
-        
         if (dbRecordId) {
           await supabaseClient.from('fitness_data').update(payload).eq('id', dbRecordId);
         } else {
@@ -86,61 +106,78 @@ function savePortfolio() {
           if (data) dbRecordId = data.id;
         }
       } catch (e) {
-        console.warn('Failed to save to Supabase', e);
+        console.warn('Supabase save failed:', e.message);
       }
     }, 1000);
   }
 }
 
 // --- Fetchers ---
+// Market: uses the EXACT same URLs as the Swift MarketService.swift
 async function fetchMarket() {
   try {
-    const auUrl = 'https://push2delay.eastmoney.com/api/qt/stock/get?secid=118.AU9999&fields=f43,f59,f60,f169,f170';
-    const auData = await fetchJSONP(auUrl, 'cb');
-    updateMarketUI('gold', auData.data);
+    const goldData = await fetchMarketJSONP(
+      'https://push2delay.eastmoney.com/api/qt/stock/get?secid=118.AU9999&fields=f43,f59,f60,f169,f170'
+    );
+    updateMarketUI('gold', goldData?.data);
+  } catch (e) {
+    console.warn('Gold fetch failed:', e.message);
+  }
 
-    const shUrl = 'https://push2delay.eastmoney.com/api/qt/stock/get?secid=1.000001&fields=f43,f59,f60,f169,f170';
-    const shData = await fetchJSONP(shUrl, 'cb');
-    updateMarketUI('index', shData.data);
-  } catch (error) {
-    console.error('Market fetch failed', error);
+  try {
+    const indexData = await fetchMarketJSONP(
+      'https://push2delay.eastmoney.com/api/qt/stock/get?secid=1.000001&fields=f43,f59,f60,f169,f170'
+    );
+    updateMarketUI('index', indexData?.data);
+  } catch (e) {
+    console.warn('Index fetch failed:', e.message);
   }
 }
 
+// Fund: fetches one at a time (serial) because jsonpgz is a global singleton callback
+// This matches the Swift FundService.swift logic
 async function fetchFunds() {
   let anySuccess = false;
   let latestTime = null;
 
   for (const holding of portfolio.holdings) {
     try {
-      const url = `https://fundgz.1234567.com.cn/js/${holding.code}.js`;
-      const script = document.createElement('script');
-      
-      const promise = new Promise((resolve, reject) => {
-        window['jsonpgz'] = (data) => resolve(data);
-        script.src = `${url}?rt=${Date.now()}`;
-        script.onerror = () => reject(new Error('fund fetch failed'));
-        document.body.appendChild(script);
-      });
-
-      const data = await promise;
-      document.body.removeChild(script);
-      delete window['jsonpgz'];
+      const data = await fetchFundEstimate(holding.code);
 
       if (data && data.fundcode === holding.code) {
-        holding.name = data.name;
-        holding.estimatedNAV = parseFloat(data.gsz);
-        holding.previousNAV = parseFloat(data.dwjz);
-        holding.todayChangePercent = parseFloat(data.gszzl);
-        holding.estimateTime = data.gztime;
-        anySuccess = true;
+        // Parse exactly like FundEstimateResponse in FundModels.swift
+        const gsz = parseFloat(data.gsz);
+        const dwjz = parseFloat(data.dwjz);
+        const gszzl = parseFloat(data.gszzl);
 
+        if (!isNaN(gszzl)) {
+          holding.todayChangePercent = gszzl;
+        }
+        if (!isNaN(gsz) && gsz > 0) {
+          holding.estimatedNAV = gsz;
+        }
+        if (!isNaN(dwjz) && dwjz > 0) {
+          holding.previousNAV = dwjz;
+        }
+        if (data.name) {
+          holding.name = data.name;
+        }
+        if (data.gztime) {
+          holding.estimateTime = data.gztime;
+        }
+
+        // Auto-calculate shares if 0 (matching Swift: shares == 0 && costBasis > 0 && nav > 0)
+        if (holding.shares === 0 && holding.costBasis > 0 && holding.estimatedNAV > 0) {
+          holding.shares = holding.costBasis / holding.estimatedNAV;
+        }
+
+        anySuccess = true;
         if (!latestTime || data.gztime > latestTime) {
           latestTime = data.gztime;
         }
       }
     } catch (e) {
-      console.warn(`Failed to fetch fund ${holding.code}`, e);
+      console.warn(`Fund ${holding.code} failed:`, e.message);
     }
   }
 
@@ -154,25 +191,27 @@ async function fetchFunds() {
 }
 
 // --- UI Rendering ---
+// Market UI: matches Swift MarketModels.swift parsing
+// f43 = current price (raw int), f59 = precision, f169 = change amount, f170 = change percent
+// All divided by 10^precision (precision from f59)
 function updateMarketUI(type, data) {
   if (!data) return;
-  const current = data.f43 / 100;
-  const change = data.f169 / 100;
-  const changePercent = data.f170 / 100;
+
+  const precision = data.f59 || 2;
+  const divisor = Math.pow(10, precision);
+  const current = data.f43 / divisor;
+  const changePercent = data.f170 / 100; // f170 is already *100 in raw data
 
   const priceEl = document.getElementById(`${type}-price`);
   const trendEl = document.getElementById(`${type}-trend`);
-  
-  priceEl.textContent = current.toFixed(2);
-  
-  const isUp = change > 0;
-  const isDown = change < 0;
+
+  priceEl.textContent = current.toFixed(precision);
+
+  const isUp = changePercent > 0;
+  const isDown = changePercent < 0;
   const trendClass = isUp ? 'trend-up' : isDown ? 'trend-down' : 'trend-flat';
-  
-  // Gold uses trend-badge class, index uses trend class
-  const baseClass = type === 'gold' ? 'trend-badge' : 'trend';
-  trendEl.className = `${baseClass} ${trendClass}`;
-  
+  trendEl.className = `trend-badge ${trendClass}`;
+
   const sign = isUp ? '+' : '';
   trendEl.textContent = `${sign}${changePercent.toFixed(2)}%`;
 }
@@ -187,10 +226,10 @@ function renderFunds() {
   portfolio.holdings.forEach(h => {
     const row = document.createElement('div');
     row.className = 'fund-item';
-    
+
     const profitClass = FundHolding.getTrendClass(h.profit);
     const todayClass = FundHolding.getTrendClass(h.todayChange);
-    
+
     row.innerHTML = `
       <div class="fund-info">
         <a href="https://fund.eastmoney.com/${h.code}.html" target="_blank" class="fund-name">${h.name}</a>
@@ -212,16 +251,17 @@ function renderFunds() {
     }
   });
 
-  // Update earnings card
+  // Update earnings hero card
   const earningsEl = document.getElementById('earnings-value');
-  
+
   if (allFailed) {
     earningsEl.textContent = '--';
-    earningsEl.className = 'main-price small';
+    earningsEl.className = 'main-price';
     earningsEl.style.color = 'var(--text-muted)';
   } else {
     earningsEl.textContent = FundHolding.formatSigned(totalEarnings);
-    earningsEl.className = `main-price small ${FundHolding.getTrendClass(totalEarnings)}`;
+    const trendClass = FundHolding.getTrendClass(totalEarnings);
+    earningsEl.className = `main-price ${trendClass}`;
     earningsEl.style.color = '';
   }
 }
@@ -290,12 +330,8 @@ function handleAdjust(isIncrease) {
 }
 
 // Close dialogs on backdrop click
-addDialog.addEventListener('click', (e) => {
-  if (e.target === addDialog) addDialog.close();
-});
-adjustDialog.addEventListener('click', (e) => {
-  if (e.target === adjustDialog) adjustDialog.close();
-});
+addDialog.addEventListener('click', (e) => { if (e.target === addDialog) addDialog.close(); });
+adjustDialog.addEventListener('click', (e) => { if (e.target === adjustDialog) adjustDialog.close(); });
 
 // --- Initialization ---
 async function start() {
@@ -303,7 +339,7 @@ async function start() {
   renderFunds();
   fetchMarket();
   fetchFunds();
-  
+
   setInterval(fetchMarket, 5000);
   setInterval(fetchFunds, 60000);
 }

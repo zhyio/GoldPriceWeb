@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="实时黄金价格、上证指数与基金持仓盈亏追踪">
   <title>Gold & Indices Tracker</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,43 +18,41 @@
     </header>
 
     <main class="dashboard">
-      <!-- Market Overview Cards -->
       <section class="overview-grid">
-        
-        <!-- Gold Card -->
-        <a id="gold-link" href="https://quote.eastmoney.com/globalfuture/AU9999.html" target="_blank" class="glass-card gold-card">
+
+        <!-- Earnings Card — HERO position -->
+        <div class="glass-card earnings-card hero">
           <div class="card-header">
-            <span class="card-title">黄金 (AU9999)</span>
-            <div id="gold-trend" class="trend-badge trend-flat">--</div>
+            <span class="card-title">今日预估盈亏</span>
+            <div class="subtitle" id="earnings-subtitle">持仓基金总和</div>
           </div>
           <div class="card-body">
-            <div id="gold-price" class="main-price">--</div>
+            <div id="earnings-value" class="main-price">--</div>
           </div>
-          <div class="card-bg-glow"></div>
-        </a>
+          <div class="card-bg-glow earnings-glow"></div>
+        </div>
 
+        <!-- Gold + Index side by side -->
         <div class="sub-cards-row">
-          <!-- Index Card -->
-          <a id="index-link" href="https://quote.eastmoney.com/unify/r/1.000001" target="_blank" class="glass-card index-card">
+          <a id="gold-link" href="https://quote.eastmoney.com/globalfuture/AU9999.html" target="_blank" class="glass-card market-card">
+            <div class="card-header">
+              <span class="card-title">黄金 AU9999</span>
+            </div>
+            <div class="card-body">
+              <div id="gold-price" class="main-price small">--</div>
+              <div id="gold-trend" class="trend-badge trend-flat">--</div>
+            </div>
+          </a>
+
+          <a id="index-link" href="https://quote.eastmoney.com/unify/r/1.000001" target="_blank" class="glass-card market-card">
             <div class="card-header">
               <span class="card-title">上证指数</span>
             </div>
             <div class="card-body">
               <div id="index-price" class="main-price small">--</div>
-              <div id="index-trend" class="trend trend-flat">--</div>
+              <div id="index-trend" class="trend-badge trend-flat">--</div>
             </div>
           </a>
-
-          <!-- Earnings Card -->
-          <div class="glass-card earnings-card">
-            <div class="card-header">
-              <span class="card-title">今日预估盈亏</span>
-            </div>
-            <div class="card-body">
-              <div id="earnings-value" class="main-price small">--</div>
-              <div class="subtitle">持仓基金总和</div>
-            </div>
-          </div>
         </div>
 
       </section>
@@ -62,7 +61,7 @@
       <section class="portfolio-section">
         <div class="section-header">
           <h2>Your Portfolio</h2>
-          <button id="add-fund-btn" class="icon-btn-add" aria-label="Add Fund">+</button>
+          <button id="add-fund-btn" class="icon-btn-add" aria-label="添加基金">+</button>
         </div>
         
         <div id="funds-list" class="funds-list">
@@ -113,7 +112,7 @@
       <div id="adjust-error" class="error-msg"></div>
       
       <div class="action-grid">
-        <button class="btn-action decrease" id="adjust-decrease-btn">买出减仓</button>
+        <button class="btn-action decrease" id="adjust-decrease-btn">卖出减仓</button>
         <button class="btn-action increase" id="adjust-increase-btn">买入加仓</button>
       </div>
       

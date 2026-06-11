@@ -195,18 +195,27 @@ body {
   gap: 12px;
 }
 
-/* Gold Card — hero card with glow */
-.gold-card {
-  border-color: rgba(251, 191, 36, 0.1);
+/* Earnings Hero Card */
+.earnings-card.hero {
+  border-color: rgba(139, 92, 246, 0.1);
 }
 
-.gold-card .card-bg-glow {
+.earnings-card.hero .card-header {
+  margin-bottom: 8px;
+}
+
+.earnings-card.hero .subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.earnings-glow {
   position: absolute;
   right: -30px;
   bottom: -30px;
   width: 140px;
   height: 140px;
-  background: var(--gold-glow);
+  background: rgba(139, 92, 246, 0.15);
   filter: blur(50px);
   border-radius: 50%;
   pointer-events: none;
@@ -219,20 +228,14 @@ body {
   gap: 12px;
 }
 
-.index-card, .earnings-card {
+.market-card {
   padding: 16px;
 }
 
-.index-card .card-body,
-.earnings-card .card-body {
+.market-card .card-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.earnings-card .subtitle {
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 /* =========================================================
