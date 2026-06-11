@@ -3,7 +3,6 @@ import { FundPortfolio, FundHolding } from './core.js';
 // --- State ---
 const STORAGE_KEY = 'goldprice_portfolio';
 let portfolio = null;
-let isFundsExpanded = true;
 let currentAdjustCode = null;
 
 // --- Supabase Config ---
@@ -177,8 +176,7 @@ function updateMarketUI(type, data) {
   const symbol = isUp ? '↑' : isDown ? '↓' : '—';
   const valText = `${Math.abs(change).toFixed(2)} (${Math.abs(changePercent).toFixed(2)}%)`;
   
-  trendEl.querySelector('.symbol').textContent = symbol;
-  trendEl.querySelector('.value').textContent = valText;
+  trendEl.textContent = `${symbol} ${valText}`;
 }
 
 function renderFunds() {
@@ -190,47 +188,24 @@ function renderFunds() {
 
   portfolio.holdings.forEach(h => {
     const row = document.createElement('div');
-    row.className = 'fund-row';
+    row.className = 'fund-item';
     
-    // Name
-    const nameCol = document.createElement('a');
-    nameCol.className = 'fund-name-col';
-    nameCol.href = `https://fund.eastmoney.com/${h.code}.html`;
-    nameCol.target = '_blank';
-    nameCol.title = '单击查看基金详情';
-    nameCol.innerHTML = `
-      <span class="fund-name">${h.name}</span>
-      <span class="fund-code">${h.code}</span>
+    const profitClass = FundHolding.getTrendClass(h.profit);
+    const todayClass = FundHolding.getTrendClass(h.todayChange);
+    
+    row.innerHTML = `
+      <div class="fund-info">
+        <a href="https://fund.eastmoney.com/${h.code}.html" target="_blank" class="fund-name">${h.name}</a>
+        <span class="fund-stats">${h.code} | 持仓 ${FundHolding.formatAmount(h.costBasis)}</span>
+      </div>
+      <div class="fund-values">
+        <span class="fund-profit ${profitClass}">${FundHolding.formatSigned(h.profit)}</span>
+        <span class="fund-today ${todayClass}">${FundHolding.formatSigned(h.todayChange)}</span>
+      </div>
+      <div class="fund-actions">
+        <button class="btn-icon adjust-btn" data-code="${h.code}">⋯</button>
+      </div>
     `;
-
-    const spacer = document.createElement('div');
-    spacer.className = 'spacer';
-
-    // Cost
-    const costCol = document.createElement('div');
-    costCol.className = 'fund-cost-col fund-val';
-    costCol.textContent = FundHolding.formatAmount(h.costBasis);
-
-    // Profit
-    const profitCol = document.createElement('div');
-    profitCol.className = `fund-profit-col fund-val ${FundHolding.getTrendClass(h.profit)}`;
-    profitCol.textContent = FundHolding.formatSigned(h.profit);
-
-    // Today
-    const todayCol = document.createElement('div');
-    todayCol.className = `fund-today-col fund-val ${FundHolding.getTrendClass(h.todayChange)}`;
-    todayCol.textContent = FundHolding.formatSigned(h.todayChange);
-
-    // Action
-    const actionCol = document.createElement('div');
-    actionCol.className = 'fund-action-col';
-    const btn = document.createElement('button');
-    btn.className = 'action-btn';
-    btn.innerHTML = '⋯';
-    btn.onclick = () => openAdjustDialog(h.code);
-    actionCol.appendChild(btn);
-
-    row.append(nameCol, spacer, costCol, profitCol, todayCol, actionCol);
     list.appendChild(row);
 
     if (h.todayChange !== null) {
@@ -239,7 +214,6 @@ function renderFunds() {
     }
   });
 
-  // Update total earnings
   const earningsEl = document.getElementById('earnings-value');
   const dotEl = document.getElementById('earnings-dot');
   
@@ -252,7 +226,6 @@ function renderFunds() {
     earningsEl.className = `price ${FundHolding.getTrendClass(totalEarnings)}`;
     earningsEl.style.color = '';
     
-    // Update dot color
     dotEl.className = 'dot earnings';
     if (totalEarnings > 0) dotEl.style.backgroundColor = 'var(--color-up)';
     else if (totalEarnings < 0) dotEl.style.backgroundColor = 'var(--color-down)';
@@ -261,14 +234,6 @@ function renderFunds() {
 }
 
 // --- Interactions ---
-document.getElementById('toggle-btn').addEventListener('click', (e) => {
-  isFundsExpanded = !isFundsExpanded;
-  document.getElementById('funds-section').style.display = isFundsExpanded ? 'flex' : 'none';
-  e.target.textContent = isFundsExpanded ? '▲' : '▼';
-  e.target.title = isFundsExpanded ? '收起基金列表' : '展开基金列表';
-});
-
-// Add Fund
 const addDialog = document.getElementById('add-fund-dialog');
 document.getElementById('add-fund-btn').addEventListener('click', () => {
   document.getElementById('add-code').value = '';
@@ -291,17 +256,21 @@ document.getElementById('add-submit-btn').addEventListener('click', () => {
   }
 });
 
-// Adjust Fund
 const adjustDialog = document.getElementById('adjust-fund-dialog');
-function openAdjustDialog(code) {
-  currentAdjustCode = code;
-  const holding = portfolio.holdings.find(h => h.code === code);
-  document.getElementById('adjust-fund-name').textContent = holding.name;
-  document.getElementById('adjust-fund-cost').textContent = FundHolding.formatAmount(holding.costBasis);
-  document.getElementById('adjust-amount').value = '';
-  document.getElementById('adjust-error').textContent = '';
-  adjustDialog.showModal();
-}
+
+document.getElementById('funds-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('.adjust-btn');
+  if (btn) {
+    const code = btn.dataset.code;
+    currentAdjustCode = code;
+    const holding = portfolio.holdings.find(h => h.code === code);
+    document.getElementById('adjust-fund-name').textContent = holding.name;
+    document.getElementById('adjust-fund-cost').textContent = FundHolding.formatAmount(holding.costBasis);
+    document.getElementById('adjust-amount').value = '';
+    document.getElementById('adjust-error').textContent = '';
+    adjustDialog.showModal();
+  }
+});
 
 document.getElementById('adjust-cancel-btn').addEventListener('click', () => adjustDialog.close());
 document.getElementById('adjust-increase-btn').addEventListener('click', () => handleAdjust(true));
