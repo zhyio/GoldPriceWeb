@@ -2,9 +2,17 @@ import { FundPortfolio, FundHolding } from './core.js';
 
 // --- State ---
 const STORAGE_KEY = 'goldprice_portfolio';
-let portfolio = loadPortfolio();
+let portfolio = null;
 let isFundsExpanded = true;
 let currentAdjustCode = null;
+
+// --- Supabase Config ---
+const SUPABASE_URL = 'https://owqhouyafggdzgcqwlji.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_QgsSE7ZoIfcaPsJLlkfS5w_tGvRz_I6';
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const USER_ID = 'goldprice_web';
+let dbRecordId = null;
+let saveTimeout = null;
 
 // --- JSONP Utility ---
 function fetchJSONP(url, callbackName) {
@@ -30,17 +38,59 @@ function fetchJSONP(url, callbackName) {
 }
 
 // --- Storage ---
-function loadPortfolio() {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (data) {
-    const p = FundPortfolio.deserialize(data);
-    if (p) return p;
+async function loadPortfolio() {
+  const localData = localStorage.getItem(STORAGE_KEY);
+  let p = localData ? FundPortfolio.deserialize(localData) : new FundPortfolio(FundPortfolio.getDefaults());
+  
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('fitness_data')
+        .select('*')
+        .eq('user_id', USER_ID)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        dbRecordId = data.id;
+        if (data.exercises && data.exercises.holdings) {
+          p = FundPortfolio.deserialize(data.exercises.holdings) || p;
+          localStorage.setItem(STORAGE_KEY, data.exercises.holdings);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load from Supabase', e);
+    }
   }
-  return new FundPortfolio(FundPortfolio.getDefaults());
+  return p;
 }
 
 function savePortfolio() {
-  localStorage.setItem(STORAGE_KEY, portfolio.serialize());
+  const serialized = portfolio.serialize();
+  localStorage.setItem(STORAGE_KEY, serialized);
+
+  if (supabaseClient) {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(async () => {
+      try {
+        const payload = {
+          user_id: USER_ID,
+          exercises: { holdings: serialized },
+          updated_at: new Date().toISOString()
+        };
+        
+        if (dbRecordId) {
+          await supabaseClient.from('fitness_data').update(payload).eq('id', dbRecordId);
+        } else {
+          const { data } = await supabaseClient.from('fitness_data').insert([payload]).select().single();
+          if (data) dbRecordId = data.id;
+        }
+      } catch (e) {
+        console.warn('Failed to save to Supabase', e);
+      }
+    }, 1000);
+  }
 }
 
 // --- Fetchers ---
@@ -278,7 +328,8 @@ function handleAdjust(isIncrease) {
 }
 
 // --- Initialization ---
-function start() {
+async function start() {
+  portfolio = await loadPortfolio();
   renderFunds();
   fetchMarket();
   fetchFunds();
