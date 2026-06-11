@@ -1,0 +1,388 @@
+:root {
+  --color-up: #FF4D4F;
+  --color-down: #00A870;
+  --color-flat: #9CA3AF;
+  --color-gold: #FFD700;
+  --color-index: #60A5FA;
+  --bg-color: rgba(0, 0, 0, 0.75);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --text-muted: rgba(255, 255, 255, 0.35);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #2c3e50; /* A fallback background to see the glass effect */
+  background-image: linear-gradient(135deg, #1f1c2c, #928DAB); /* Default cool background to show off glass */
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-primary);
+}
+
+.widget {
+  width: 485px;
+  background: var(--bg-color);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 0.5px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 12px;
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.column-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.dot.gold { background-color: var(--color-gold); }
+.dot.index { background-color: var(--color-index); }
+.dot.earnings { background-color: var(--color-flat); } /* Default flat, JS will update */
+
+.price {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.price:hover {
+  text-decoration: underline;
+}
+
+.trend {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.trend-up { color: var(--color-up); }
+.trend-down { color: var(--color-down); }
+.trend-flat { color: var(--color-flat); }
+
+.subtitle {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.divider {
+  width: 1px;
+  height: 28px;
+  background-color: var(--border-color);
+  margin: 0 8px;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  width: 22px;
+  height: 56px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.hr-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 0;
+  border: none;
+}
+
+.funds-container {
+  display: flex;
+  flex-direction: column;
+  padding-top: 4px;
+}
+
+.fund-header, .fund-row {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  height: 20px;
+}
+
+.fund-row {
+  height: 30px;
+}
+
+.fund-header {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.fund-name-col { width: 190px; text-align: left; }
+.fund-cost-col { width: 85px; text-align: right; }
+.fund-profit-col { width: 85px; text-align: right; }
+.fund-today-col { width: 75px; text-align: right; }
+.fund-action-col { width: 24px; text-align: right; }
+
+.fund-row .fund-name-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.fund-row .fund-name-col:hover .fund-name {
+  text-decoration: underline;
+}
+
+.fund-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fund-code {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+}
+
+.fund-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.spacer { flex: 1; }
+
+.action-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 28px;
+}
+
+.action-btn:hover {
+  color: var(--text-primary);
+}
+
+.add-fund-row {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  height: 28px;
+}
+
+.add-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.add-btn:hover {
+  color: var(--text-primary);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 20px;
+  font-size: 8px;
+  color: var(--text-muted);
+}
+
+.status-warning {
+  color: #F59E0B;
+}
+
+/* Modals */
+dialog {
+  background: #2D3748;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  font-family: -apple-system, sans-serif;
+  backdrop-filter: blur(10px);
+}
+
+dialog::backdrop {
+  background: rgba(0,0,0,0.4);
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.dialog-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.dialog-subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+input {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  color: white;
+  padding: 6px;
+  font-size: 12px;
+  width: 140px;
+  text-align: center;
+}
+
+input:focus {
+  outline: none;
+  border-color: #3B82F6;
+}
+
+.error-msg {
+  color: #EF4444;
+  font-size: 9px;
+  text-align: center;
+  min-height: 12px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+button.primary {
+  background: #3B82F6;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.primary:hover { background: #2563EB; }
+
+button.danger {
+  background: #EF4444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.danger:hover { background: #DC2626; }
+
+button.success {
+  background: #00A870;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.success:hover { background: #00875A; }
+
+button.text {
+  background: none;
+  color: var(--text-primary);
+  border: none;
+  padding: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.text:hover { color: white; }
+
+.delete-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #EF4444;
+  font-size: 10px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  margin-top: 8px;
+}
+
+.delete-action:hover {
+  color: #DC2626;
+}
+
+.hr-modal {
+  width: 100%;
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  margin: 4px 0;
+}

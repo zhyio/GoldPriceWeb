@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>GoldPrice Web</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="widget">
+    <div class="header">
+      <!-- Gold -->
+      <div class="column">
+        <div class="column-label">
+          <div class="dot gold"></div>
+          <span>金价</span>
+        </div>
+        <a id="gold-price" class="price" href="https://quote.eastmoney.com/globalfuture/AU9999.html" target="_blank" title="单击在东方财富查看金价行情">--</a>
+        <div id="gold-trend" class="trend trend-flat">
+          <span class="symbol">—</span>
+          <span class="value">--</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Index -->
+      <div class="column">
+        <div class="column-label">
+          <div class="dot index"></div>
+          <span>上证</span>
+        </div>
+        <a id="index-price" class="price" href="https://quote.eastmoney.com/unify/r/1.000001" target="_blank" title="单击在东方财富查看上证行情">--</a>
+        <div id="index-trend" class="trend trend-flat">
+          <span class="symbol">—</span>
+          <span class="value">--</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Earnings -->
+      <div class="column">
+        <div class="column-label">
+          <div id="earnings-dot" class="dot earnings"></div>
+          <span>今日</span>
+        </div>
+        <div id="earnings-value" class="price" style="color: var(--text-muted); cursor: default;">--</div>
+        <div class="subtitle">基金估算</div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <button id="toggle-btn" class="toggle-btn" title="收起基金列表">▲</button>
+    </div>
+
+    <div id="funds-section" class="funds-container">
+      <hr class="hr-divider" />
+      <div class="fund-header">
+        <div class="fund-name-col">名称</div>
+        <div class="spacer"></div>
+        <div class="fund-cost-col">持仓</div>
+        <div class="fund-profit-col">收益</div>
+        <div class="fund-today-col">今日</div>
+        <div class="fund-action-col"></div>
+      </div>
+
+      <div id="funds-list">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="add-fund-row">
+        <button id="add-fund-btn" class="add-btn">
+          <span>+</span>
+          <span>添加基金</span>
+        </button>
+      </div>
+
+      <div class="footer">
+        <span>收益和今日盈亏基于盘中估算净值计算</span>
+        <span id="update-time">暂无估值</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Fund Dialog -->
+  <dialog id="add-fund-dialog">
+    <div class="dialog-content">
+      <h3 class="dialog-title">添加基金</h3>
+      <input type="text" id="add-code" placeholder="基金代码（6位）" maxlength="6">
+      <input type="number" id="add-amount" placeholder="持仓金额">
+      <div id="add-error" class="error-msg"></div>
+      <div class="dialog-actions">
+        <button class="text" id="add-cancel-btn">取消</button>
+        <button class="primary" id="add-submit-btn">添加</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Adjust Fund Dialog -->
+  <dialog id="adjust-fund-dialog">
+    <div class="dialog-content">
+      <h3 class="dialog-title" id="adjust-fund-name">--</h3>
+      <p class="dialog-subtitle">当前持仓 <span id="adjust-fund-cost">--</span></p>
+      <input type="number" id="adjust-amount" placeholder="调整金额">
+      <div id="adjust-error" class="error-msg"></div>
+      <div class="dialog-actions">
+        <button class="success" id="adjust-decrease-btn">减仓</button>
+        <button class="danger" id="adjust-increase-btn">加仓</button>
+      </div>
+      <hr class="hr-modal" />
+      <button class="delete-action" id="adjust-delete-btn">
+        <span>🗑</span>
+        <span>删除此基金</span>
+      </button>
+      <button class="text" id="adjust-cancel-btn" style="position: absolute; right: 8px; top: 8px; padding: 4px;">✕</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
