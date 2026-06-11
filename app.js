@@ -9,8 +9,8 @@ let currentAdjustCode = null;
 const SUPABASE_URL = 'https://owqhouyafggdzgcqwlji.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QgsSE7ZoIfcaPsJLlkfS5w_tGvRz_I6';
 let supabaseClient = null;
-const USER_ID = 'goldprice_web';
-let dbRecordId = null;
+const USER_ID = '87553652@qq.com';
+const ROW_ID = 'c5c4ca38-9682-451c-b4da-228de7f8b83b';
 let saveTimeout = null;
 
 try {
@@ -64,17 +64,16 @@ async function loadPortfolio() {
     try {
       const { data, error } = await supabaseClient
         .from('fitness_data')
-        .select('*')
-        .eq('user_id', USER_ID)
-        .limit(1)
+        .select('exercises')
+        .eq('id', ROW_ID)
         .maybeSingle();
       if (error) throw error;
-      if (data) {
-        dbRecordId = data.id;
-        if (data.exercises && data.exercises.holdings) {
-          p = FundPortfolio.deserialize(data.exercises.holdings) || p;
-          localStorage.setItem(STORAGE_KEY, data.exercises.holdings);
-        }
+      if (data && data.exercises && data.exercises.gold_holdings) {
+        const cloudStr = typeof data.exercises.gold_holdings === 'string'
+          ? data.exercises.gold_holdings
+          : JSON.stringify(data.exercises.gold_holdings);
+        p = FundPortfolio.deserialize(cloudStr) || p;
+        localStorage.setItem(STORAGE_KEY, cloudStr);
       }
     } catch (e) {
       console.warn('Supabase load error:', e.message);
@@ -91,17 +90,20 @@ function savePortfolio() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
       try {
-        const payload = {
-          user_id: USER_ID,
-          exercises: { holdings: serialized },
-          updated_at: new Date().toISOString()
-        };
-        if (dbRecordId) {
-          await supabaseClient.from('fitness_data').update(payload).eq('id', dbRecordId);
-        } else {
-          const { data } = await supabaseClient.from('fitness_data').insert([payload]).select().single();
-          if (data) dbRecordId = data.id;
-        }
+        // Read current exercises, merge in gold_holdings, then update
+        const { data: current } = await supabaseClient
+          .from('fitness_data')
+          .select('exercises')
+          .eq('id', ROW_ID)
+          .maybeSingle();
+
+        const exercises = (current && current.exercises) ? { ...current.exercises } : {};
+        exercises.gold_holdings = serialized;
+
+        await supabaseClient
+          .from('fitness_data')
+          .update({ exercises, updated_at: new Date().toISOString() })
+          .eq('id', ROW_ID);
       } catch (e) {
         console.warn('Supabase save error:', e.message);
       }
