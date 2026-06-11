@@ -95,12 +95,10 @@ function savePortfolio() {
 // --- Fetchers ---
 async function fetchMarket() {
   try {
-    // AU9999
     const auUrl = 'https://push2delay.eastmoney.com/api/qt/stock/get?secid=118.AU9999&fields=f43,f59,f60,f169,f170';
     const auData = await fetchJSONP(auUrl, 'cb');
     updateMarketUI('gold', auData.data);
 
-    // Shanghai Index
     const shUrl = 'https://push2delay.eastmoney.com/api/qt/stock/get?secid=1.000001&fields=f43,f59,f60,f169,f170';
     const shData = await fetchJSONP(shUrl, 'cb');
     updateMarketUI('index', shData.data);
@@ -116,7 +114,6 @@ async function fetchFunds() {
   for (const holding of portfolio.holdings) {
     try {
       const url = `https://fundgz.1234567.com.cn/js/${holding.code}.js`;
-      // fundgz returns jsonpgz({ ... })
       const script = document.createElement('script');
       
       const promise = new Promise((resolve, reject) => {
@@ -151,7 +148,7 @@ async function fetchFunds() {
     savePortfolio();
     renderFunds();
     if (latestTime) {
-      document.getElementById('update-time').textContent = `估值时间 ${latestTime.substr(11, 5)}`;
+      document.getElementById('update-time').textContent = `估值 ${latestTime.substr(11, 5)}`;
     }
   }
 }
@@ -170,13 +167,14 @@ function updateMarketUI(type, data) {
   
   const isUp = change > 0;
   const isDown = change < 0;
+  const trendClass = isUp ? 'trend-up' : isDown ? 'trend-down' : 'trend-flat';
   
-  trendEl.className = `trend ${isUp ? 'trend-up' : isDown ? 'trend-down' : 'trend-flat'}`;
+  // Gold uses trend-badge class, index uses trend class
+  const baseClass = type === 'gold' ? 'trend-badge' : 'trend';
+  trendEl.className = `${baseClass} ${trendClass}`;
   
-  const symbol = isUp ? '↑' : isDown ? '↓' : '—';
-  const valText = `${Math.abs(change).toFixed(2)} (${Math.abs(changePercent).toFixed(2)}%)`;
-  
-  trendEl.textContent = `${symbol} ${valText}`;
+  const sign = isUp ? '+' : '';
+  trendEl.textContent = `${sign}${changePercent.toFixed(2)}%`;
 }
 
 function renderFunds() {
@@ -196,14 +194,14 @@ function renderFunds() {
     row.innerHTML = `
       <div class="fund-info">
         <a href="https://fund.eastmoney.com/${h.code}.html" target="_blank" class="fund-name">${h.name}</a>
-        <span class="fund-stats">${h.code} | 持仓 ${FundHolding.formatAmount(h.costBasis)}</span>
+        <span class="fund-stats">${h.code} · 持仓 ${FundHolding.formatAmount(h.costBasis)}</span>
       </div>
       <div class="fund-values">
         <span class="fund-profit ${profitClass}">${FundHolding.formatSigned(h.profit)}</span>
         <span class="fund-today ${todayClass}">${FundHolding.formatSigned(h.todayChange)}</span>
       </div>
       <div class="fund-actions">
-        <button class="btn-icon adjust-btn" data-code="${h.code}">⋯</button>
+        <button class="btn-icon adjust-btn" data-code="${h.code}" aria-label="调整">⋯</button>
       </div>
     `;
     list.appendChild(row);
@@ -214,22 +212,17 @@ function renderFunds() {
     }
   });
 
+  // Update earnings card
   const earningsEl = document.getElementById('earnings-value');
-  const dotEl = document.getElementById('earnings-dot');
   
   if (allFailed) {
     earningsEl.textContent = '--';
+    earningsEl.className = 'main-price small';
     earningsEl.style.color = 'var(--text-muted)';
-    dotEl.className = 'dot earnings trend-flat';
   } else {
     earningsEl.textContent = FundHolding.formatSigned(totalEarnings);
-    earningsEl.className = `price ${FundHolding.getTrendClass(totalEarnings)}`;
+    earningsEl.className = `main-price small ${FundHolding.getTrendClass(totalEarnings)}`;
     earningsEl.style.color = '';
-    
-    dotEl.className = 'dot earnings';
-    if (totalEarnings > 0) dotEl.style.backgroundColor = 'var(--color-up)';
-    else if (totalEarnings < 0) dotEl.style.backgroundColor = 'var(--color-down)';
-    else dotEl.style.backgroundColor = 'var(--color-flat)';
   }
 }
 
@@ -250,7 +243,7 @@ document.getElementById('add-submit-btn').addEventListener('click', () => {
     savePortfolio();
     addDialog.close();
     renderFunds();
-    fetchFunds(); // Fetch newly added
+    fetchFunds();
   } catch (e) {
     document.getElementById('add-error').textContent = e.message;
   }
@@ -295,6 +288,14 @@ function handleAdjust(isIncrease) {
     document.getElementById('adjust-error').textContent = e.message;
   }
 }
+
+// Close dialogs on backdrop click
+addDialog.addEventListener('click', (e) => {
+  if (e.target === addDialog) addDialog.close();
+});
+adjustDialog.addEventListener('click', (e) => {
+  if (e.target === adjustDialog) adjustDialog.close();
+});
 
 // --- Initialization ---
 async function start() {
